@@ -1,0 +1,50 @@
+# main.py
+# Main entry point for running the ESP32-CAM segmentation and ink detection pipeline.
+
+import os
+import argparse
+from src.segmentation import perform_segmentation
+from src.ink_detection import detect_ink
+from src.image_generation import generate_output_images
+from src.utils.logging_handler import setup_logger
+
+logger = setup_logger()
+
+def main(input_path, output_dir):
+    """
+    Run the pipeline for segmenting scrolls, detecting ink, and generating output images.
+
+    Args:
+        input_path (str): Path to the input CT scan data.
+        output_dir (str): Directory where the outputs will be saved.
+    """
+    logger.info("Starting pipeline for input: %s", input_path)
+
+    # Step 1: Perform Segmentation
+    segmentation_result = perform_segmentation(input_path, output_dir)
+    logger.info("Segmentation completed. Mesh file saved at: %s", segmentation_result['mesh_path'])
+
+    # Step 2: Detect Ink
+    ink_detection_result = detect_ink(segmentation_result['flattened_image_path'], output_dir)
+    logger.info("Ink detection completed. Ink prediction saved at: %s", ink_detection_result['ink_image_path'])
+
+    # Step 3: Generate Output Images
+    generate_output_images(
+        segmentation_result['flattened_image_path'], 
+        ink_detection_result['ink_image_path'], 
+        output_dir
+    )
+    logger.info("Output images generated and saved at: %s", output_dir)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ESP32-CAM Scroll Segmentation and Ink Detection Pipeline")
+    parser.add_argument("--input", type=str, required=True, help="Path to the input CT scan data")
+    parser.add_argument("--output", type=str, required=True, help="Directory to save the outputs")
+
+    args = parser.parse_args()
+
+    # Ensure output directory exists
+    os.makedirs(args.output, exist_ok=True)
+
+    # Run the main pipeline
+    main(args.input, args.output)
